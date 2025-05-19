@@ -1,0 +1,34 @@
+version: "3.7"
+
+services:
+  postgres:
+    image: bitnami/postgresql:15
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+    ports:
+      - "5432:5432"
+
+  airflow:
+    image: khoaihps1/airflow:latest
+    restart: always
+    depends_on:
+      - postgres
+    environment:
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres:5432/airflow
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__WEBSERVER__EXPOSE_CONFIG: "true"
+      KAFKA_BOOTSTRAP_SERVER: 127.1.27.1:9092
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ./dags:/opt/airflow/dags
+    ports:
+      - "8080:8080"
+    command: >
+      bash -c "
+        airflow db migrate &&
+        airflow users create --username admin --password admin --firstname Admin --lastname User --role Admin --email admin@example.com &&
+        airflow webserver & airflow scheduler
+      "
