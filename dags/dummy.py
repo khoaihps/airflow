@@ -1,32 +1,26 @@
 from airflow import DAG
-from airflow.operators.dummy_operator import DummyOperator
-from datetime import datetime, timedelta
+from airflow.operators.empty import EmptyOperator
+from airflow.operators.python import PythonOperator
+from datetime import datetime
 
-# Định nghĩa DAG
-default_args = {
-    'owner': 'airflow',
-    'start_date': datetime(2024, 12, 16),
-    'retries': 1,
-    'retry_delay': timedelta(minutes=5),
-}
+def sample_task():
+    print("This is a sample task")
 
-dag = DAG(
-    'dummy_dag_example',
-    default_args=default_args,
-    description='A simple dummy DAG example',
-    schedule_interval=timedelta(days=1),  # DAG này chạy hàng ngày
-)
+with DAG(
+    dag_id="example_dag_v2_10_5",
+    schedule_interval="@daily",
+    start_date=datetime(2025, 1, 1),
+    catchup=False,
+    tags=["example"],
+) as dag:
 
-# Định nghĩa các task trong DAG
-start_task = DummyOperator(
-    task_id='start_task',
-    dag=dag,
-)
+    start = EmptyOperator(task_id="start")
 
-end_task = DummyOperator(
-    task_id='end_task',
-    dag=dag,
-)
+    task1 = PythonOperator(
+        task_id="task1",
+        python_callable=sample_task,
+    )
 
-# Thiết lập chuỗi tác vụ (task dependencies)
-start_task >> end_task
+    end = EmptyOperator(task_id="end")
+
+    start >> task1 >> end
