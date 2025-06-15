@@ -26,7 +26,7 @@ with DAG(
     dag_id="tradingview_scraper_dag",
     default_args=default_args,
     start_date=datetime(2025, 1, 1),
-    schedule_interval="*/10 * * * *",
+    schedule_interval="*/15 * * * *",
     catchup=False,
     tags=["tradingview", "scraper"],
 ) as dag:

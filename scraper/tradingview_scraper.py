@@ -70,7 +70,7 @@ class TradingViewScraper:
             title = title_tag.get_text(strip=True) if title_tag else "No title"
 
             time_tag = soup.find("time-format")
-            timestamp = int(time_tag["timestamp"]) / 1000 if time_tag and time_tag.has_attr("timestamp") else None
+            timestamp = int(int(time_tag["timestamp"]) / 1000) if time_tag and time_tag.has_attr("timestamp") else None
 
             content_div = soup.find("div", class_="content-KX2tCBZq")
             content = "\n".join(p.get_text(strip=True) for p in content_div.find_all("p")) if content_div else "No content"
@@ -95,12 +95,13 @@ class TradingViewScraper:
         results = []
         scraped_urls = []
 
-        for url in new_links[:max_articles]:
+        for url in new_links:
             article = self.parse_article(url)
-            if article:
+            if article and article["timestamp"]:
                 results.append(article)
                 scraped_urls.append(url)
             time.sleep(1)
 
+        results.sort(key=lambda x: x["timestamp"], reverse=True)
         self.save_urls_to_cache(scraped_urls)
-        return results
+        return results[:max_articles]
