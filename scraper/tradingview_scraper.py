@@ -1,7 +1,6 @@
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
@@ -28,7 +27,6 @@ class TradingViewScraper:
         return webdriver.Remote(
             command_executor="http://selenium:4444/wd/hub",
             options=options,
-            desired_capabilities=DesiredCapabilities.CHROME,
         )
 
     def get_cached_urls(self):

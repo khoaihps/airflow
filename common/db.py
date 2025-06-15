@@ -11,7 +11,6 @@ class PostgresDB:
     def execute(self, query: str) -> Optional[List[Dict]]:
         with self.engine.connect() as conn:
             result = conn.execute(text(query))
-            conn.commit()
             try:
                 return [dict(row._mapping) for row in result]
             except Exception:
