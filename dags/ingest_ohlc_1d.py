@@ -43,7 +43,7 @@ with DAG(
     dag_id='ingest_ohlc_1d',
     default_args=default_args,
     start_date=datetime(2025, 1, 1),
-    schedule_interval='59 23 * * *',
+    schedule_interval='58 23 * * *',
     catchup=False,
     tags=['ohlc', 'binance'],
 ) as dag:
