@@ -19,7 +19,6 @@ def compute_btc_quarterly_return():
     db = PostgresDB()
     now_ts = int(time.time() * 1000)
 
-    # Dòng OHLC gần nhất trước hiện tại
     current_row = db.execute(f"""
         SELECT timestamp, close
         FROM ohlc_1d
@@ -35,11 +34,9 @@ def compute_btc_quarterly_return():
     close_now = current_row[0]['close']
     ts_dt = datetime.utcfromtimestamp(current_ts / 1000)
 
-    # 0h00 UTC đầu quý
     ts_quarter_start = get_quarter_start(ts_dt)
     ts_quarter_start_ms = int(ts_quarter_start.timestamp() * 1000)
 
-    # Dòng OHLC gần nhất trước đầu quý
     prev_row = db.execute(f"""
         SELECT timestamp, close
         FROM ohlc_1d
@@ -59,13 +56,13 @@ def compute_btc_quarterly_return():
 
     insert_query = f"""
         INSERT INTO btc_quarterly_returns (year, quarter, return_percent)
-        VALUES ({year}, {quarter}, {return_percent})
+        VALUES ({year}, '{quarter}', {return_percent})
         ON CONFLICT (year, quarter)
         DO UPDATE SET return_percent = EXCLUDED.return_percent;
     """
     db.execute(insert_query)
 
-    logging.info(f"[BTC Quarterly Return] {year}-Q{quarter}: {return_percent:.2f}%")
+    logging.info(f"[BTC Quarterly Return] {year}-{quarter}: {return_percent:.2f}%")
 
 with DAG(
     dag_id="btc_quarterly_return_dag",
