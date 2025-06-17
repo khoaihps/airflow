@@ -9,7 +9,7 @@ from common.db import PostgresDB
 default_args = {
     'owner': 'airflow',
     'retries': 1,
-    'retry_delay': timedelta(minutes=5),
+    'retry_delay': timedelta(minutes=1),
 }
 
 def fetch_ohlc_data_and_insert():

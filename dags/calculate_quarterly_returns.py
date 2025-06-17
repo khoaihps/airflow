@@ -11,66 +11,73 @@ default_args = {
     'retry_delay': timedelta(minutes=1),
 }
 
-def compute_btc_monthly_return():
+def get_quarter_start(dt: datetime) -> datetime:
+    quarter = (dt.month - 1) // 3 + 1
+    return datetime(dt.year, 3 * (quarter - 1) + 1, 1)
+
+def compute_btc_quarterly_return():
     db = PostgresDB()
     now_ts = int(time.time() * 1000)
 
-    current_row = db.execute("""
+    # Dòng OHLC gần nhất trước hiện tại
+    current_row = db.execute(f"""
         SELECT timestamp, close
         FROM ohlc_1d
-        WHERE timestamp < %s
+        WHERE timestamp < {now_ts}
         ORDER BY timestamp DESC
         LIMIT 1
-    """ % now_ts)
+    """)
 
     if not current_row:
         raise ValueError("No OHLC data before now")
 
     current_ts = current_row[0]['timestamp']
     close_now = current_row[0]['close']
-
     ts_dt = datetime.utcfromtimestamp(current_ts / 1000)
-    ts_month_start = datetime(ts_dt.year, ts_dt.month, 1)
-    ts_month_start_ms = int(ts_month_start.timestamp() * 1000)
 
-    prev_row = db.execute("""
+    # 0h00 UTC đầu quý
+    ts_quarter_start = get_quarter_start(ts_dt)
+    ts_quarter_start_ms = int(ts_quarter_start.timestamp() * 1000)
+
+    # Dòng OHLC gần nhất trước đầu quý
+    prev_row = db.execute(f"""
         SELECT timestamp, close
         FROM ohlc_1d
-        WHERE timestamp < %s
+        WHERE timestamp < {ts_quarter_start_ms}
         ORDER BY timestamp DESC
         LIMIT 1
-    """ % ts_month_start_ms)
+    """)
 
     if not prev_row:
-        raise ValueError("No OHLC data before month start")
+        raise ValueError("No OHLC data before quarter start")
 
     close_prev = prev_row[0]['close']
 
     return_percent = round(((close_now - close_prev) / close_prev) * 100, 2)
     year = ts_dt.year
-    month = ts_dt.month
+    quarter = f"Q{(ts_dt.month - 1) // 3 + 1}"
 
     insert_query = f"""
-        INSERT INTO btc_monthly_returns (year, month, return_percent)
-        VALUES ({year}, {month}, {return_percent})
-        ON CONFLICT (year, month)
+        INSERT INTO btc_quarterly_returns (year, quarter, return_percent)
+        VALUES ({year}, {quarter}, {return_percent})
+        ON CONFLICT (year, quarter)
         DO UPDATE SET return_percent = EXCLUDED.return_percent;
     """
     db.execute(insert_query)
 
-    logging.info(f"[BTC Monthly Return] {year}-{month}: {return_percent:.2f}%")
+    logging.info(f"[BTC Quarterly Return] {year}-Q{quarter}: {return_percent:.2f}%")
 
 with DAG(
-    dag_id="btc_monthly_return_dag",
-    start_date=datetime(2025, 1, 1),
+    dag_id="btc_quarterly_return_dag",
+    start_date=datetime(2023, 1, 1),
     schedule_interval="59 23 * * *",
     default_args=default_args,
     catchup=False,
-    tags=["btc", "return", "ohlc"]
+    tags=["btc", "return", "ohlc", "quarter"]
 ) as dag:
     calculate_return = PythonOperator(
-        task_id="compute_btc_monthly_return",
-        python_callable=compute_btc_monthly_return,
+        task_id="compute_btc_quarterly_return",
+        python_callable=compute_btc_quarterly_return,
     )
 
     calculate_return
