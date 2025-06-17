@@ -27,7 +27,7 @@ def fetch_ohlc_data_and_insert():
         raise ValueError("No OHLC data returned")
 
     ohlc = data[0]
-    ts = int(ohlc[0] // 1000)  # ms → seconds
+    ts = int(ohlc[0])
 
     db = PostgresDB()
     insert_query = f"""
@@ -43,7 +43,7 @@ with DAG(
     dag_id='ingest_ohlc_1d',
     default_args=default_args,
     start_date=datetime(2025, 1, 1),
-    schedule_interval='1 0 * * *',  # 00:01 UTC mỗi ngày
+    schedule_interval='59 23 * * *',
     catchup=False,
     tags=['ohlc', 'binance'],
 ) as dag:
