@@ -1,3 +1,5 @@
+import logging
+
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 from datetime import datetime, timedelta, timezone
@@ -10,25 +12,24 @@ from common.db import PostgresDB
 
 
 def summarize_and_store_articles():
-    # Kafka Consumer
     consumer = KafkaConsumer(
         "news",
         bootstrap_servers="kafka:9092",
-        value_deserializer=lambda m: json.loads(m.decode("utf-8")),
         auto_offset_reset="earliest",
-        enable_auto_commit=False,
+        enable_auto_commit=True,
         group_id="news_summarizer",
-        consumer_timeout_ms=5000
+        consumer_timeout_ms=5000,
+        value_deserializer=lambda m: json.loads(m.decode("utf-8"))
     )
 
-    now = datetime.now(timezone.utc)
+    now = int(datetime.now(timezone.utc).timestamp())
     recent_articles: List[Dict] = []
 
     for msg in consumer:
         data = msg.value
         try:
-            ts = datetime.fromisoformat(data["timestamp"])
-            if (now - ts).total_seconds() <= (12 * 3600):
+            print((now - data["timestamp"]))
+            if (now - data["timestamp"]) <= (12 * 3600):
                 recent_articles.append(data)
         except Exception as e:
             continue
@@ -44,14 +45,9 @@ def summarize_and_store_articles():
         if summary:
             article["summary"] = summary
             ts = article["timestamp"]
-            if isinstance(ts, str):
-                ts = datetime.fromisoformat(ts)
-            if ts.tzinfo is None:
-                ts = ts.replace(tzinfo=timezone.utc)
-            else:
-                ts = ts.astimezone(timezone.utc)
-            article["timestamp"] = ts.isoformat()
+            article["timestamp"] = datetime.fromtimestamp(ts, tz=timezone.utc)
             summarized_articles.append(article)
+            logging.info(f"Summarized article url: {article["url"]}")
             if len(summarized_articles) >= 10:
                 break
 
